@@ -1,13 +1,11 @@
 const express = require('express');
-
 //Routes
-const router = express.Router();
-router.get('/', (req, res)=>{
-   res.send('Hello World - NodeJs');
-});
+const router = require('./routes/index');
 
 //Settings
 const app = express();
 app.use('/', router);
+
+app.use(express.json());
 
 module.exports = app;   
