@@ -1,6 +1,7 @@
-const express = require('express');
+const express  = require('express');
 //Routes
-const router = require('./routes/index');
+const router   = require('./routes/index');
+const User     =  require('./models/User');
 
 //Settings
 const app = express();
