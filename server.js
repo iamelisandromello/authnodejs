@@ -11,6 +11,9 @@ mongoose.connection.on('error', (error)=>{
    console.error("Erro: " + error.message);
 });
 
+//LOADING ALL MODELS
+require('./models/User');
+
 const app = require('./app');
 
 app.set('port', process.env.PORT || 9999);   

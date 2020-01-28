@@ -1,3 +1,4 @@
+const userController = require('../controllers/userController');
 const express = require('express');
 
 //Routes
@@ -6,7 +7,7 @@ router.get('/', (req, res)=>{
    res.send('Hello World - NodeJs');
 });
 
-router.get('/login', (req, res)=>{
-   res.send('Página de Login');
-});
+router.post('/users/login', userController.loginAction);
+
+
 module.exports = router;
