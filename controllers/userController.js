@@ -18,8 +18,31 @@ exports.registerAction = (req, resp) => {
          resposta.msg    = "Ocorreu um Erro";
          console.log('erro: ', error);
       }
+      resposta.dados = ({ id: retorno._id, name: retorno.name,  email: retorno.email, roles: retorno.roles });
+      resposta.msg   = "Cadastro efetuado com Sucesso";
+      resp.json(resposta); //converte o objeto de retorno em json
+   });
 
-      resposta.msg    = "Cadastro efetuado com Sucesso";
+}
+
+exports.loginAction = async(req, resp) => { 
+   
+   let resposta = new RespostaClass();
+   const auth = User.authenticate();
+
+   auth(req.body.email, req.body.password, async (error, result) => {
+      
+      if(!result) {
+         resposta.erro   = true;
+         resposta.msg    = "Senha ou Usuário Inválidos";
+         console.log('erro: ', error);
+      }
+      else {
+         req.login(result, ()=>{});
+
+         resposta.msg  = 'Autenticaçao Realizada pelo Passport';
+         resposta.dados = ({ id: req.user._id, name: req.user.name,  email: req.user.email, roles: req.user.roles });
+      }
       resp.json(resposta); //converte o objeto de retorno em json
    });
 
