@@ -91,21 +91,23 @@ exports.refreshAction = async(req, resp) =>
 
    const result = await User.findOne({ _id: id_user })
    .then(user => {
-      if(user) {
+      if(user)
+      {
          console.log("found user");
          return user;
-      } else {
+      } else
+      {
          console.log("user not found");
          return user;
       }
    }).catch(
       err => console.log("something went wrong")
    );
-
    if(result == undefined){
       console.log('Id not found');
    }
-   else {
+   else
+   {
       const newToken = await authService.generateToken({
          id    : result._id,
          email : result.email,
@@ -113,8 +115,13 @@ exports.refreshAction = async(req, resp) =>
          roles : result.roles
       });
       resposta.msg  = 'Refresh JWT realizado com sucesso';
-      resposta.dados = ({ id: result._id, name: result.name, email: result.email, roles: result.roles, token: newToken });
+      resposta.dados = ({ 
+                        id: result._id,
+                        name: result.name,
+                        email: result.email,
+                        roles: result.roles,
+                        token: newToken 
+                        });
    }
-   resp.json(resposta); //converte o objeto de retorno em json
+   resp.json(resposta);
 }
-

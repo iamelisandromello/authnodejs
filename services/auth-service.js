@@ -38,7 +38,7 @@ exports.authorize = function (req, res, next)
          });
       }
       else {
-         res.status(401).json({
+         res.status(401).json({  
             message: 'JWT poorly formatted'
          });
       }
