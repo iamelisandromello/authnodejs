@@ -3,7 +3,7 @@ const User           = mongoose.model('User');
 const RespostaClass  = require('../classes/responseClass');
 const authService    = require('../services/auth-service');
 
-exports.loginAction = async(req, res) => { 
+exports.homeAction = async(req, res) => { 
    res.send('Controller User...'); 
 }
 
@@ -105,6 +105,8 @@ exports.refreshAction = async(req, resp) =>
    );
    if(result == undefined){
       console.log('Id not found');
+      resposta.erro   = true;
+      resposta.msg    = "Password or Invalid User";
    }
    else
    {
@@ -114,7 +116,7 @@ exports.refreshAction = async(req, resp) =>
          name  : result.name,
          roles : result.roles
       });
-      resposta.msg  = 'Refresh JWT realizado com sucesso';
+      resposta.msg  = 'Refresh JWT successfully performed';
       resposta.dados = ({ 
                         id: result._id,
                         name: result.name,

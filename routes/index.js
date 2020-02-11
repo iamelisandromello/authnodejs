@@ -8,6 +8,7 @@ router.get('/', (req, res)=>{
    res.send('Hello World - NodeJs');
 });
 
+router.get('/users/home', authService.whatRole, userController.homeAction);
 router.post('/users/login', userController.loginAction);
 router.post('/users/register', userController.registerAction);
 router.post('/users/refresh', authService.authorize, userController.refreshAction);

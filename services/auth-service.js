@@ -48,3 +48,41 @@ exports.authorize = function (req, res, next)
       });
    }
 };
+
+exports.whatRole = function (req, res, next) 
+{
+   let token = req.headers['authorization'] || req.body.token || req.query.token || req.headers['x-access-token'];
+
+   if(token){
+      if (token.startsWith('Bearer ')) {
+         // Remove Bearer from string
+         token = token.slice(7, token.length);
+         jwt.verify(token, process.env.SALT_KEY, function(error, decoded)
+         {
+            if (error) {
+               res.status(401).json({
+                  message: 'Invalid Token'
+               });
+            } else {
+               if (decoded.roles.includes('admin')){
+                  next();
+               }
+               else {
+                  res.status(403).json({
+                     message: 'This functionality is restricted to administrators'
+                  });
+               }
+            }   
+         });
+      }
+      else {
+         res.status(401).json({  
+            message: 'JWT poorly formatted'
+         });
+      }
+   } else {
+      res.status(401).json({
+         message: 'Restricted access. User must have authentication token'
+      });
+   }
+};

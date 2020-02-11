@@ -1,7 +1,7 @@
-const express  = require('express');
+const express        = require('express');
 const cors           = require('cors'); //permite requisiçoes entre dominios digferentes
 //Routes
-const router   = require('./routes/index');
+const router         = require('./routes/index');
 const passport       = require('passport');
 const LocalStrategy  = require('passport-local').Strategy;
 
