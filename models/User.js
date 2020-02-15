@@ -4,10 +4,12 @@ mongoose.Promise              = global.Promise;
 const passportLocalMongoose   = require('passport-local-mongoose');
 
 const userSchema = new mongoose.Schema({
-   name        : String,
-   lastname    : String,
-   username    : String,
-   email       : String,
+   name                 : String,
+   lastname             : String,
+   username             : String,
+   email                : String,
+   resetPasswordToken   : String,
+   resetPasswordExpires : Date,
    roles       : [{
       type:     String,
       required : true,
@@ -16,6 +18,13 @@ const userSchema = new mongoose.Schema({
 
    }]
 }, {versionKey: false});
+userSchema.methods.validPassword = function (password) {
+   if (password === this.password) {
+     return true; 
+   } else {
+     return false;
+   }
+ }
 
 userSchema.plugin(passportLocalMongoose, { usernameField : 'email' });
 

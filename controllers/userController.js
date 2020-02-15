@@ -1,7 +1,14 @@
 const mongoose       = require('mongoose');
+const crypto         = require('crypto');
 const User           = mongoose.model('User');
+
 const RespostaClass  = require('../classes/responseClass');
 const authService    = require('../services/auth-service');
+const userModel      = require('../models/User');
+
+exports.findUser = async(email, callback) => {
+   User.findOne({email}, callback)
+}
 
 exports.homeAction = async(req, res) => { 
    res.send('Controller User...'); 
@@ -82,7 +89,7 @@ exports.loginAction = async(req, resp) =>
 
 exports.refreshAction = async(req, resp) =>
 {    
-   const resposta = new RespostaClass();
+   let resposta = new RespostaClass();
    var token = req.headers['authorization'] || req.body.token || req.query.token || req.headers['x-access-token'];
    token = token.slice(7, token.length);     // Remove Bearer from string   }
 
@@ -126,4 +133,93 @@ exports.refreshAction = async(req, resp) =>
                         });
    }
    resp.json(resposta);
+}
+
+exports.recoveryAction = async(req, resp) =>
+{ 
+   let resposta = new RespostaClass();
+   await this.findUser(req.body.email, async(err, doc) => 
+   {
+      if (err || !doc) {
+         resposta.erro   = true;
+         resposta.msg    = "User not found";
+      }
+      else {
+         doc.resetPasswordToken = crypto.randomBytes(20).toString('hex');
+         doc.resetPasswordExpires = Date.now() + 360000;//1hora 
+         await doc.save();
+
+         const resetLink = `http://${req.headers.host}/users/reset/${doc.resetPasswordToken}`;
+         //ToDo: enviar o e-mail
+
+         resposta.msg  = 'We sent you an email with instructions';
+         resposta.dados = ({ 
+                           link: resetLink
+                           });
+      }
+      resp.json(resposta);
+   });   
+}
+
+exports.recoveryToken = async(req, resp) =>
+{
+   let resposta = new RespostaClass();
+   const user = await  User.findOne({
+      resetPasswordToken   : req.params.token,
+      resetPasswordExpires : { $gt: Date.now() }
+   }).exec();
+
+   if (!user) {
+      resposta.erro   = true;
+      resposta.msg    = "Expired link or invalid user";
+   }
+   else {
+      resposta.msg  = 'Redirect to password change screen';
+      resposta.dados = ({ 
+                        id: 'teste'
+                        });
+   }
+
+   resp.json(resposta);   
+}
+
+exports.recoveryTokenAction = async(req, resp) =>
+{
+   
+   let resposta = new RespostaClass();
+   const user = await  User.findOne({
+      resetPasswordToken   : req.params.token,
+      resetPasswordExpires : { $gt: Date.now() }
+   }).exec();
+
+   if (!user)
+   {
+      resposta.erro   = true;
+      resposta.msg    = "Expired link or invalid user";
+      console.log('Not User: ' + resposta.msg );
+      resp.json(resposta);
+   }
+   else if(req.body.password != req.body['password-confirm'])
+   {
+      resposta.erro   = true;
+      resposta.msg    = "Passwords do not match";
+      console.log('No Match: ' + resposta.msg );
+      resp.json(resposta);
+   }
+   else
+   {
+      user.setPassword(req.body.password, async ()=>
+      {
+         resposta.msg   = "Password changed successfully";
+         resposta.dados = ({ 
+            id    : user._id,
+            name  : user.name,
+            email : user.email,
+            roles : user.roles
+         });
+         console.log('Success: ' + resposta.msg );
+         await user.save();
+         resp.json(resposta);
+      });  
+   }
 }
