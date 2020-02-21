@@ -138,18 +138,18 @@ exports.refreshAction = async(req, resp) =>
 exports.recoveryAction = async(req, resp) =>
 { 
    let resposta = new RespostaClass();
-   await this.findUser(req.body.email, async(err, doc) => 
+   await this.findUser(req.body.email, async(err, user) => 
    {
-      if (err || !doc) {
+      if (err || !user) {
          resposta.erro   = true;
          resposta.msg    = "User not found";
       }
       else {
-         doc.resetPasswordToken = crypto.randomBytes(20).toString('hex');
-         doc.resetPasswordExpires = Date.now() + 360000;//1hora 
-         await doc.save();
+         user.resetPasswordToken = crypto.randomBytes(20).toString('hex');
+         user.resetPasswordExpires = Date.now() + 360000;//1hora 
+         await user.save();
 
-         const resetLink = `http://${req.headers.host}/users/reset/${doc.resetPasswordToken}`;
+         const resetLink = `http://${req.headers.host}/users/reset/${user.resetPasswordToken}`;
          //ToDo: enviar o e-mail
 
          resposta.msg  = 'We sent you an email with instructions';
@@ -176,7 +176,7 @@ exports.recoveryToken = async(req, resp) =>
    else {
       resposta.msg  = 'Redirect to password change screen';
       resposta.dados = ({ 
-                        id: 'teste'
+                           id    : user._id,
                         });
    }
 
@@ -185,7 +185,6 @@ exports.recoveryToken = async(req, resp) =>
 
 exports.recoveryTokenAction = async(req, resp) =>
 {
-   
    let resposta = new RespostaClass();
    const user = await  User.findOne({
       resetPasswordToken   : req.params.token,
