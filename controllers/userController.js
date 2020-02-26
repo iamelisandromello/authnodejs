@@ -4,7 +4,13 @@ const User           = mongoose.model('User');
 
 const RespostaClass  = require('../classes/responseClass');
 const authService    = require('../services/auth-service');
+const mailService    = require('../services/mail-service');
 const userModel      = require('../models/User');
+
+
+exports.createResponse = async(msg, dados = null) => {
+
+}
 
 exports.findUser = async(email, callback) => {
    User.findOne({email}, callback)
@@ -144,13 +150,117 @@ exports.recoveryAction = async(req, resp) =>
          resposta.erro   = true;
          resposta.msg    = "User not found";
       }
-      else {
+      else
+      {
          user.resetPasswordToken = crypto.randomBytes(20).toString('hex');
          user.resetPasswordExpires = Date.now() + 360000;//1hora 
          await user.save();
 
          const resetLink = `http://${req.headers.host}/users/reset/${user.resetPasswordToken}`;
-         //ToDo: enviar o e-mail
+         const text = `Recuperar a senha com link: ${resetLink}`;
+         /*const html = `Recuperando a Senha</br>
+         Para cadastrar uma nova Senha clique 
+         <a href="${resetLink}">
+            aqui
+         </a>
+         `;  */
+         const html = `<div style="font-family:&quot;
+         Helvetica Neue&quot;
+         ,&quot;Roboto&quot;,arial,sans-serif;
+         font-size:15px;
+         line-height:20px;
+         background:#ffffff;
+         border-radius:4px;
+         padding:20px;
+         text-align:left;
+         margin-left:10px;margin-right:10px">
+            <p style="margin:1em 0;
+            font-family:&quot;
+            Helvetica Neue&quot;
+            ,&quot;Roboto&quot;
+            ,arial,sans-serif;
+            font-size:15px;
+            line-height:20px">
+               Dear ${user.name},
+            </p>
+            <p style="margin:1em 0;
+            font-family:&quot;
+            Helvetica Neue&quot;
+            ,&quot;Roboto&quot;
+            ,arial,sans-serif;
+            font-size:15px;
+            line-height:20px">
+               We received a request for your authNodeJs account.
+            </p>
+            <div style="font-family:&quot;
+            Helvetica Neue&quot;
+            ,&quot;Roboto&quot;
+            ,arial,sans-serif;
+            font-size:15px;
+            line-height:20px;
+            color:#6ab750">
+               <a href="${resetLink}" style="color:#6ab750;
+               font-weight:bold;
+               display:inline-block;
+               border-radius:0px;
+               text-decoration:none;
+               padding:8px 12px;
+               text-align:center;
+               text-transform:uppercase;
+               letter-spacing:1px;
+               font-size:9pt;
+               border:1px solid #6ab750;
+               width:31%">
+                  Reset Password
+               </a>    
+            </div>
+            <div style="font-family:&quot;
+            Helvetica Neue&quot;
+            ,&quot;Roboto&quot;
+            ,arial,sans-serif;
+            font-size:15px;
+            line-height:20px;
+            word-wrap:break-word">
+               <p style="margin:1em 0;
+               font-family:&quot;Helvetica Neue&quot;
+               ,&quot;Roboto&quot;
+               ,arial,sans-serif;
+               font-size:15px;
+               line-height:20px">
+                  If you ignore this message, your password won't be changed.
+               </p>
+               <p style="margin:1em 0;
+               font-family:&quot;
+               Helvetica Neue&quot;
+               ,&quot;Roboto&quot;
+               ,arial,sans-serif;
+               font-size:15px;
+               line-height:20px">
+                  If you didn't initiate this process, you can safely ignore this message. We take your privacy very
+                  seriously at YouVersion. You can review our complete Privacy Policy at 
+                     <a href="https://www.auhtnodejs.com/privacy" style="color:#0784c8;
+                     word-break:break-all" target="_blank">
+                     https://www.authnodejscom/privacy
+                  </a>.
+               </p>
+               <p style="margin:1em 0;
+               font-family:&quot;
+               Helvetica Neue&quot;
+               ,&quot;Roboto&quot;
+               ,arial,sans-serif;
+               font-size:15px;
+               line-height:20px
+               ;margin-bottom:0">
+                  The authNodeJs Team
+               </p>
+            </div>
+         </div>`;
+         mailService.send({
+            to:user.email,
+            subject:'Resetting Your authNodeJs Password',
+            html,
+            text
+         }).catch(err => console.error(err));
 
          resposta.msg  = 'We sent you an email with instructions';
          resposta.dados = ({ 
@@ -158,7 +268,7 @@ exports.recoveryAction = async(req, resp) =>
                            });
       }
       resp.json(resposta);
-   });   
+   });
 }
 
 exports.recoveryToken = async(req, resp) =>
