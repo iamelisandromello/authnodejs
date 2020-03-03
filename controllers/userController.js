@@ -5,32 +5,91 @@ const User           = mongoose.model('User');
 const RespostaClass  = require('../classes/responseClass');
 const authService    = require('../services/auth-service');
 const mailService    = require('../services/mail-service');
-const userModel      = require('../models/User');
 
-
-exports.createResponse = async(msg, dados = null) => {
-
-}
-
+//Functions
 exports.findUser = async(email, callback) => {
    User.findOne({email}, callback)
 }
 
+exports.findId = async(id, callback) => {
+   User.findOne({_id:id}, callback)
+}
+
+exports.clearLink = async(id) => 
+{
+   let status = false;
+   await User.findOne({_id:id})
+   .then(async(user) => {
+      user.resetPasswordExpires  = null;
+      user.resetPasswordToken    = null;
+      await user.save()
+      .then(() => {
+         console.log('Reset Password Recovery link.');
+         status = true;
+      })
+      .catch(() => {
+         console.log('It was not possible to complete the request.');
+         status = false;
+      });
+   })
+   .catch((err) => {
+      console.log('User not found.');
+      status = false;
+   });
+   console.log('Closed Proccess Clear: ' + status);
+   return status;
+}
+
+exports.prepareResponse = function(callback, id, msg)
+{
+   let response = new RespostaClass();
+   if(!id){
+      response.erro   = true;
+      response.msg    = msg;
+      callback(
+         response
+      );
+   }
+   else {
+      User.findOne({_id:id})
+      .then((dados) => {
+         response.msg      = msg;
+         response.dados    = ({
+            id    : dados._id,
+            name  : dados.name, 
+            email : dados.email,
+            roles : dados.roles
+         });
+         callback(
+            response
+         );
+      })
+      .catch(() => {
+         response.erro   = true;
+         response.msg    = "It was not possible to complete the request";
+         callback(
+            response
+         );
+      });
+   }
+}
+
+//Actions
 exports.homeAction = async(req, res) => { 
    res.send('Controller User...'); 
 }
 
 exports.registerAction = async (req, resp) => 
 {
-   let resposta   = new RespostaClass();
    const newUser  = new User (req.body);
    newUser.roles  =   'user';
 
    User.register(newUser, req.body.password, async (error, retorno) => {
       if(error) {
-         resposta.erro   = true;
-         resposta.msg    = "Ocorreu um Erro";
-         console.log('erro: ', error);
+         this.prepareResponse(function(resposta) {
+            console.log('erro: ', resposta.msg);
+            resp.json(resposta);
+         }, id = null, "An error has occurred");
       }
 
       req.login(retorno, ()=>{});
@@ -42,36 +101,30 @@ exports.registerAction = async (req, resp) =>
          roles : req.user.roles
       });
 
-      resposta.dados = ({ 
-                           id: retorno._id,
-                           name: retorno.name,
-                           email: retorno.email,
-                           roles: retorno.roles,
-                           token: token  
-                        });
-      
-      resposta.msg   = "Cadastro efetuado com Sucesso";
-      resp.json(resposta); //converte o objeto de retorno em json
+      this.prepareResponse(function(resposta) {
+         console.log(resposta.msg);
+         resposta.dados['token'] = token;
+         resp.json(resposta);
+      }, req.user._id, 'Registration successfully Complete.' );
    });
 
 }
 
 exports.loginAction = async(req, resp) => 
 { 
-   let resposta = new RespostaClass();
    const auth = User.authenticate();
 
    auth(req.body.email, req.body.password, async (error, result) => 
    {
       if(!result) {
-         resposta.erro   = true;
-         resposta.msg    = "Senha ou Usuário Inválidos";
-         console.log('erro: ', error);
+         this.prepareResponse(function(resposta) {
+            console.log('erro: ', resposta.msg);
+            resp.json(resposta);
+         }, id = null, "Password or Invalid User");
       }
       else
       {
          req.login(result, ()=>{});
-
          const token = await authService.generateToken({
             id    : req.user._id,
             email : req.user.email,
@@ -79,18 +132,13 @@ exports.loginAction = async(req, resp) =>
             roles : req.user.roles
          });
 
-         resposta.msg  = 'Autenticaçao Realizada pelo Passport';
-         resposta.dados = ({
-                              id: req.user._id,
-                              name: req.user.name, 
-                              email: req.user.email,
-                              roles: req.user.roles,
-                              token: token  
-                           });
+         this.prepareResponse(function(resposta) {
+            console.log(resposta.msg);
+            resposta.dados['token'] = token;
+            resp.json(resposta);
+         }, req.user._id, 'Passport Authentication.' );
       }
-      resp.json(resposta); //converte o objeto de retorno em json
    });
-
 }
 
 exports.refreshAction = async(req, resp) =>
@@ -147,13 +195,15 @@ exports.recoveryAction = async(req, resp) =>
    await this.findUser(req.body.email, async(err, user) => 
    {
       if (err || !user) {
-         resposta.erro   = true;
-         resposta.msg    = "User not found";
+         this.prepareResponse(function(resposta) {
+            console.log(resposta.msg);
+            resp.json(resposta);
+         }, id = null, "User not found");
       }
       else
       {
          user.resetPasswordToken = crypto.randomBytes(20).toString('hex');
-         user.resetPasswordExpires = Date.now() + 360000;//1hora 
+         user.resetPasswordExpires = Date.now() + 3600000;//1hora 
          await user.save();
 
          const resetLink = `http://${req.headers.host}/users/reset/${user.resetPasswordToken}`;
@@ -266,36 +316,34 @@ exports.recoveryAction = async(req, resp) =>
          resposta.dados = ({ 
                            link: resetLink
                            });
+         resp.json(resposta);
       }
-      resp.json(resposta);
    });
 }
 
 exports.recoveryToken = async(req, resp) =>
 {
-   let resposta = new RespostaClass();
    const user = await  User.findOne({
       resetPasswordToken   : req.params.token,
       resetPasswordExpires : { $gt: Date.now() }
    }).exec();
 
    if (!user) {
-      resposta.erro   = true;
-      resposta.msg    = "Expired link or invalid user";
+      this.prepareResponse(function(resposta) {
+         console.log(resposta.msg);
+         resp.json(resposta);
+      }, id = null, "Expired link or invalid user");
    }
    else {
-      resposta.msg  = 'Redirect to password change screen';
-      resposta.dados = ({ 
-                           id    : user._id,
-                        });
-   }
-
-   resp.json(resposta);   
+      this.prepareResponse(function(resposta) {
+         console.log(resposta.msg);
+         resp.json(resposta);
+      }, user._id, 'Redirect to password change screen' );
+   }  
 }
 
 exports.recoveryTokenAction = async(req, resp) =>
 {
-   let resposta = new RespostaClass();
    const user = await  User.findOne({
       resetPasswordToken   : req.params.token,
       resetPasswordExpires : { $gt: Date.now() }
@@ -303,32 +351,40 @@ exports.recoveryTokenAction = async(req, resp) =>
 
    if (!user)
    {
-      resposta.erro   = true;
-      resposta.msg    = "Expired link or invalid user";
-      console.log('Not User: ' + resposta.msg );
-      resp.json(resposta);
+      this.prepareResponse(function(resposta) {
+         console.log(resposta.msg);
+         resp.json(resposta);
+      }, id = null, "Expired link or invalid user");
    }
    else if(req.body.password != req.body['password-confirm'])
    {
-      resposta.erro   = true;
-      resposta.msg    = "Passwords do not match";
-      console.log('No Match: ' + resposta.msg );
-      resp.json(resposta);
+      this.prepareResponse(function(resposta) {
+         console.log(resposta.msg);
+         resp.json(resposta);
+      }, id = null, "Passwords do not match");
    }
    else
    {
-      user.setPassword(req.body.password, async ()=>
-      {
-         resposta.msg   = "Password changed successfully";
-         resposta.dados = ({ 
-            id    : user._id,
-            name  : user.name,
-            email : user.email,
-            roles : user.roles
-         });
-         console.log('Success: ' + resposta.msg );
-         await user.save();
-         resp.json(resposta);
-      });  
+      user.setPassword(req.body.password)
+      .then(
+         async () => {
+            await user.save();
+            this.clearLink(user._id)
+            .then(() => {
+               this.prepareResponse(function(resposta) {
+                  console.log(resposta.msg);
+                  resp.json(resposta);
+               }, user._id, 'Executado teste de callback.' );                   
+            })
+         }
+      )
+      .catch(
+         () => {
+            this.prepareResponse(function(resposta) {
+               console.log(resposta.msg);
+               resp.json(resposta);
+            }, id = null, "Something went wrong'");
+         }
+      );
    }
 }

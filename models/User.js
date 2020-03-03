@@ -18,6 +18,7 @@ const userSchema = new mongoose.Schema({
 
    }]
 }, {versionKey: false});
+
 userSchema.methods.validPassword = function (password) {
    if (password === this.password) {
      return true; 
