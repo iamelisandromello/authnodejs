@@ -91,23 +91,23 @@ exports.registerAction = async (req, resp) =>
             resp.json(resposta);
          }, id = null, "An error has occurred");
       }
+      else {
+         req.login(retorno, ()=>{});
 
-      req.login(retorno, ()=>{});
-
-      const token = await authService.generateToken({
-         id    : req.user._id,
-         email : req.user.email,
-         name  : req.user.name,
-         roles : req.user.roles
-      });
-
-      this.prepareResponse(function(resposta) {
-         console.log(resposta.msg);
-         resposta.dados['token'] = token;
-         resp.json(resposta);
-      }, req.user._id, 'Registration successfully Complete.' );
+         const token = await authService.generateToken({
+            id    : req.user._id,
+            email : req.user.email,
+            name  : req.user.name,
+            roles : req.user.roles
+         });
+   
+         this.prepareResponse(function(resposta) {
+            console.log(resposta.msg);
+            resposta.dados['token'] = token;
+            resp.json(resposta);
+         }, req.user._id, 'Registration successfully Complete.' );         
+      }
    });
-
 }
 
 exports.loginAction = async(req, resp) => 
